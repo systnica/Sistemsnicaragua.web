@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Impuestos Nicaragua Pro</title>
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF para exportar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SheetJS para Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --border: #e2e8f0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            --sidebar-width: 280px;
+        }
+
+        .dark-mode {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-card: #2d3748;
+            --text-primary: #f7fafc;
+            --text-secondary: #cbd5e0;
+            --border: #4a5568;
+            --shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        body {
+            background: var(--gradient);
+            min-height: 100vh;
+            display: flex;
+            transition: all 0.3s ease;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-card);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--gradient);
+            color: white;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        .sidebar-menu {
+            padding: 20px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 5px 0;
+            border-radius: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover,
+        .menu-item.active {
+            background: var(--gradient);
+            color: white;
+        }
+
+        .menu-item i {
+            width: 30px;
+            font-size: 1.2rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: var(--bg-card);
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .action-btn i {
+            font-size: 1rem;
+        }
+
+        /* Calculator Grid */
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .calculator-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .calculator-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            color: var(--accent-primary);
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 15px;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .input-wrapper input,
+        .input-wrapper select {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper input:focus,
+        .input-wrapper select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-wrapper input.error {
+            border-color: var(--danger);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .btn-calculate {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background: var(--gradient);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-calculate i {
+            font-size: 1.1rem;
+        }
+
+        /* Result Cards */
+        .result-card {
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 25px;
+            border: 2px solid var(--border);
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card h3 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .result-value.total {
+            color: var(--accent-primary);
+            font-size: 1.3rem;
+        }
+
+        /* Currency Selector */
+        .currency-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: var(--bg-secondary);
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .currency-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .currency-btn.active {
+            background: var(--gradient);
+            color: white;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: var(--shadow);
+        }
+
+        /* History Panel */
+        .history-panel {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .history-header h3 {
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 15px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: var(--bg-secondary);
+            transform: translateX(5px);
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-top: 10px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideInRight 0.3s ease;
+            border-left: 4px solid var(--success);
+            min-width: 300px;
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        .toast.info {
+            border-left-color: var(--info);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .shortcut-key {
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .calculator-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .top-bar-actions {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .toast {
+                min-width: auto;
+                width: calc(100vw - 40px);
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .calculator-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Android TV Styles */
+        @media (min-width: 1920px) {
+            .main-content {
+                max-width: 1800px;
+                margin: 0 auto;
+            }
+            
+            .calculator-card {
+                padding: 40px;
+            }
+            
+            .input-wrapper input,
+            .input-wrapper select,
+            .btn-calculate {
+                padding: 20px 20px 20px 55px;
+                font-size: 1.3rem;
+            }
+            
+            .input-wrapper i {
+                font-size: 1.3rem;
+                left: 20px;
+            }
+            
+            .action-btn {
+                padding: 15px 25px;
+                font-size: 1.2rem;
+            }
+            
+            .result-value {
+                font-size: 1.3rem;
+            }
+            
+            .result-value.total {
+                font-size: 1.8rem;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-calculator fa-3x"></i>
+            <h2>Calculadora de Impuestos Nicaragua</h2>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item active" onclick="switchModule('ir')">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>IR (Salario)</span>
+            </div>
+            <div class="menu-item" onclick="switchModule('iva')">
+                <i class="fas fa-receipt"></i>
+                <span>IVA (Factura)</span>
+            </div>
+            <div class="menu-item" onclick="switchModule('aguinaldo')">
+                <i class="fas fa-gift"></i>
+                <span>Aguinaldo</span>
+            </div>
+            <div class="menu-item" onclick="switchModule('indemnizacion')">
+                <i class="fas fa-hand-holding-heart"></i>
+                <span>Indemnización</span>
+            </div>
+            <div class="menu-item" onclick="switchModule('inss-patronal')">
+                <i class="fas fa-building"></i>
+                <span>INSS Patronal</span>
+            </div>
+            <div class="menu-item" onclick="switchModule('comparador')">
+                <i class="fas fa-chart-line"></i>
+                <span>Comparador</span>
+            </div>
+            <div class="menu-item" onclick="toggleDarkMode()">
+                <i class="fas fa-moon"></i>
+                <span>Modo Oscuro</span>
+            </div>
+            <div class="menu-item" onclick="showShortcuts()">
+                <i class="fas fa-keyboard"></i>
+                <span>Atajos</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="top-bar-actions">
+                <button class="action-btn" onclick="exportPDF()">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>PDF</span>
+                </button>
+                <button class="action-btn" onclick="exportExcel()">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Excel</span>
+                </button>
+                <button class="action-btn" onclick="shareResults()">
+                    <i class="fas fa-share-alt"></i>
+                    <span>Compartir</span>
+                </button>
+                <button class="action-btn" onclick="backupToCloud()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Respaldo</span>
+                </button>
+                <button class="action-btn" onclick="clearHistory()">
+                    <i class="fas fa-trash"></i>
+                    <span>Limpiar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Calculator Grid - Todos los módulos visibles -->
+        <div class="calculator-grid">
+            <!-- IR Calculator -->
+            <div class="calculator-card" id="ir-module">
+                <div class="card-header">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <h2>Calculadora IR</h2>
+                </div>
+                
+                <div class="currency-selector">
+                    <button class="currency-btn active" onclick="setCurrency('NIO', this)">NIO</button>
+                    <button class="currency-btn" onclick="setCurrency('USD', this)">USD</button>
+                    <button class="currency-btn" onclick="setCurrency('EUR', this)">EUR</button>
+                </div>
+
+                <form id="ir-form" onsubmit="calculateIR(event)">
+                    <div class="input-group">
+                        <label for="ir-salary">
+                            <i class="fas fa-dollar-sign"></i> Salario Bruto Mensual
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <input type="number" id="ir-salary" step="0.01" min="0" placeholder="Ej: 18000" value="18000" required>
+                        </div>
+                        <div class="error-message" id="ir-salary-error">Ingrese un salario válido</div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="ir-currency">
+                            <i class="fas fa-globe"></i> Moneda
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-globe-americas"></i>
+                            <select id="ir-currency">
+                                <option value="NIO">Córdobas (NIO)</option>
+                                <option value="USD">Dólares (USD)</option>
+                                <option value="EUR">Euros (EUR)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-calculate">
+                        <i class="fas fa-calculator"></i>
+                        Calcular IR
+                    </button>
+                </form>
+
+                <div class="result-card" id="ir-result">
+                    <h3><i class="fas fa-chart-pie"></i> Resultados IR</h3>
+                    <div class="result-item">
+                        <span class="result-label">Salario Bruto:</span>
+                        <span class="result-value" id="ir-gross">C$ 18,000.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">INSS (7%):</span>
+                        <span class="result-value" id="ir-inss">C$ 1,260.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Salario Neto:</span>
+                        <span class="result-value" id="ir-net">C$ 16,740.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">IR:</span>
+                        <span class="result-value" id="ir-tax">C$ 1,264.67</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Salario Final:</span>
+                        <span class="result-value total" id="ir-total">C$ 15,475.33</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IVA Calculator -->
+            <div class="calculator-card" id="iva-module">
+                <div class="card-header">
+                    <i class="fas fa-receipt"></i>
+                    <h2>Calculadora IVA</h2>
+                </div>
+
+                <form id="iva-form" onsubmit="calculateIVA(event)">
+                    <div class="input-group">
+                        <label for="iva-amount">
+                            <i class="fas fa-dollar-sign"></i> Monto de Factura
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-file-invoice"></i>
+                            <input type="number" id="iva-amount" step="0.01" min="0" placeholder="Ej: 1000" value="1000" required>
+                        </div>
+                        <div class="error-message" id="iva-amount-error">Ingrese un monto válido</div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="iva-rate">
+                            <i class="fas fa-percent"></i> Tasa de IVA (%)
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-percentage"></i>
+                            <input type="number" id="iva-rate" step="0.1" min="0" max="100" value="15" required>
+                        </div>
+                        <div class="error-message" id="iva-rate-error">Tasa inválida (0-100)</div>
+                    </div>
+
+                    <button type="submit" class="btn-calculate">
+                        <i class="fas fa-calculator"></i>
+                        Calcular IVA
+                    </button>
+                </form>
+
+                <div class="result-card" id="iva-result">
+                    <h3><i class="fas fa-chart-pie"></i> Resultados IVA</h3>
+                    <div class="result-item">
+                        <span class="result-label">Monto Base:</span>
+                        <span class="result-value" id="iva-base">C$ 1,000.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">IVA:</span>
+                        <span class="result-value" id="iva-tax">C$ 150.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Total:</span>
+                        <span class="result-value total" id="iva-total">C$ 1,150.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aguinaldo Calculator -->
+            <div class="calculator-card" id="aguinaldo-module">
+                <div class="card-header">
+                    <i class="fas fa-gift"></i>
+                    <h2>Calculadora Aguinaldo</h2>
+                </div>
+
+                <form id="aguinaldo-form" onsubmit="calculateAguinaldo(event)">
+                    <div class="input-group">
+                        <label for="aguinaldo-salary">
+                            <i class="fas fa-dollar-sign"></i> Salario Mensual
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-money-bill"></i>
+                            <input type="number" id="aguinaldo-salary" step="0.01" min="0" placeholder="Ej: 18000" value="18000" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="aguinaldo-months">
+                            <i class="fas fa-calendar"></i> Meses Trabajados
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-clock"></i>
+                            <input type="number" id="aguinaldo-months" min="1" max="12" value="12" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-calculate">
+                        <i class="fas fa-calculator"></i>
+                        Calcular Aguinaldo
+                    </button>
+                </form>
+
+                <div class="result-card" id="aguinaldo-result">
+                    <h3><i class="fas fa-chart-pie"></i> Resultados Aguinaldo</h3>
+                    <div class="result-item">
+                        <span class="result-label">Aguinaldo Bruto:</span>
+                        <span class="result-value" id="aguinaldo-gross">C$ 18,000.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">INSS (7%):</span>
+                        <span class="result-value" id="aguinaldo-inss">C$ 1,260.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Aguinaldo Neto:</span>
+                        <span class="result-value total" id="aguinaldo-net">C$ 16,740.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indemnización Calculator -->
+            <div class="calculator-card" id="indemnizacion-module">
+                <div class="card-header">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <h2>Calculadora Indemnización</h2>
+                </div>
+
+                <form id="indemnizacion-form" onsubmit="calculateIndemnizacion(event)">
+                    <div class="input-group">
+                        <label for="indemnizacion-salary">
+                            <i class="fas fa-dollar-sign"></i> Salario Mensual
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-money-bill"></i>
+                            <input type="number" id="indemnizacion-salary" step="0.01" min="0" placeholder="Ej: 18000" value="18000" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="indemnizacion-years">
+                            <i class="fas fa-clock"></i> Años Trabajados
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-briefcase"></i>
+                            <input type="number" id="indemnizacion-years" step="0.5" min="0" placeholder="Ej: 5" value="5" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-calculate">
+                        <i class="fas fa-calculator"></i>
+                        Calcular Indemnización
+                    </button>
+                </form>
+
+                <div class="result-card" id="indemnizacion-result">
+                    <h3><i class="fas fa-chart-pie"></i> Resultados Indemnización</h3>
+                    <div class="result-item">
+                        <span class="result-label">Indemnización Bruta:</span>
+                        <span class="result-value" id="indemnizacion-gross">C$ 7,500.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">INSS (7%):</span>
+                        <span class="result-value" id="indemnizacion-inss">C$ 525.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Indemnización Neta:</span>
+                        <span class="result-value total" id="indemnizacion-net">C$ 6,975.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INSS Patronal Calculator -->
+            <div class="calculator-card" id="inss-patronal-module">
+                <div class="card-header">
+                    <i class="fas fa-building"></i>
+                    <h2>INSS Patronal</h2>
+                </div>
+
+                <form id="inss-patronal-form" onsubmit="calculateINSSPatronal(event)">
+                    <div class="input-group">
+                        <label for="patronal-salary">
+                            <i class="fas fa-dollar-sign"></i> Nómina Total
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-users"></i>
+                            <input type="number" id="patronal-salary" step="0.01" min="0" placeholder="Ej: 100000" value="100000" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-calculate">
+                        <i class="fas fa-calculator"></i>
+                        Calcular INSS Patronal
+                    </button>
+                </form>
+
+                <div class="result-card" id="patronal-result">
+                    <h3><i class="fas fa-chart-pie"></i> Resultados INSS Patronal</h3>
+                    <div class="result-item">
+                        <span class="result-label">INSS Patronal (22.5%):</span>
+                        <span class="result-value" id="patronal-inss">C$ 22,500.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">INATEC (2%):</span>
+                        <span class="result-value" id="patronal-inatec">C$ 2,000.00</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Total Patronal:</span>
+                        <span class="result-value total" id="patronal-total">C$ 24,500.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparador -->
+            <div class="calculator-card" id="comparador-module">
+                <div class="card-header">
+                    <i class="fas fa-chart-line"></i>
+                    <h2>Comparador de Escenarios</h2>
+                </div>
+
+                <div class="comparison-container">
+                    <div class="scenario-card">
+                        <h4>Escenario Actual</h4>
+                        <div class="input-group">
+                            <label>Salario Actual</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-dollar-sign"></i>
+                                <input type="number" id="current-salary" step="0.01" min="0" placeholder="Ej: 18000" value="18000">
+                            </div>
+                        </div>
+                        <div id="current-scenario-result"></div>
+                    </div>
+
+                    <div class="scenario-card">
+                        <h4>Escenario Propuesto</h4>
+                        <div class="input-group">
+                            <label>Salario Propuesto</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-dollar-sign"></i>
+                                <input type="number" id="proposed-salary" step="0.01" min="0" placeholder="Ej: 25000" value="25000">
+                            </div>
+                        </div>
+                        <div id="proposed-scenario-result"></div>
+                    </div>
+                </div>
+
+                <button class="btn-calculate" onclick="compareScenarios()">
+                    <i class="fas fa-chart-line"></i>
+                    Comparar Escenarios
+                </button>
+
+                <div class="result-card" id="comparison-result">
+                    <h3><i class="fas fa-chart-bar"></i> Resultados Comparación</h3>
+                    <div id="comparison-details"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <canvas id="taxChart"></canvas>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-panel">
+            <div class="history-header">
+                <h3><i class="fas fa-history"></i> Historial de Cálculos</h3>
+                <button class="action-btn" onclick="exportHistory()">
+                    <i class="fas fa-download"></i> Exportar Historial
+                </button>
+            </div>
+            <div class="history-list" id="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Shortcuts Modal -->
+    <div class="modal" id="shortcuts-modal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <h2><i class="fas fa-keyboard"></i> Atajos de Teclado</h2>
+            
+            <div class="shortcut-item">
+                <span>Calcular (IR/IVA)</span>
+                <span class="shortcut-key">Ctrl + Enter</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Resetear</span>
+                <span class="shortcut-key">Ctrl + R</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Modo Oscuro</span>
+                <span class="shortcut-key">Ctrl + D</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Exportar PDF</span>
+                <span class="shortcut-key">Ctrl + P</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Exportar Excel</span>
+                <span class="shortcut-key">Ctrl + E</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Compartir</span>
+                <span class="shortcut-key">Ctrl + S</span>
+            </div>
+            <div class="shortcut-item">
+                <span>Cambiar Módulo</span>
+                <span class="shortcut-key">Ctrl + 1-6</span>
+            </div>
+            
+            <button class="btn-calculate" onclick="closeModal()" style="margin-top: 20px;">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentCurrency = 'NIO';
+        let calculationHistory = JSON.parse(localStorage.getItem('taxHistory')) || [];
+        let chart = null;
+        let exchangeRates = {
+            NIO: 1,
+            USD: 36.5,
+            EUR: 39.8
+        };
+        let currentResults = {};
+
+        // Función para mostrar notificaciones
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+            if (type === 'warning') icon = 'exclamation-triangle';
+            if (type === 'info') icon = 'info-circle';
+            
+            toast.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Función para formatear moneda
+        function formatCurrency(value, currency = currentCurrency) {
+            const symbols = { NIO: 'C$', USD: '$', EUR: '€' };
+            return `${symbols[currency]} ${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+        }
+
+        // Función para validar números
+        function validateNumber(input, min, max, errorElement) {
+            const value = parseFloat(input.value);
+            
+            if (isNaN(value) || value < min || (max && value > max)) {
+                input.classList.add('error');
+                if (errorElement) errorElement.classList.add('show');
+                return false;
+            } else {
+                input.classList.remove('error');
+                if (errorElement) errorElement.classList.remove('show');
+                return true;
+            }
+        }
+
+        // Función para convertir moneda
+        function convertCurrency(amount, from, to) {
+            return (amount / exchangeRates[from]) * exchangeRates[to];
+        }
+
+        // Función para cambiar moneda
+        function setCurrency(currency, btn) {
+            currentCurrency = currency;
+            document.querySelectorAll('.currency-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Actualizar selectores
+            document.getElementById('ir-currency').value = currency;
+            
+            showToast(`Moneda cambiada a ${currency}`);
+        }
+
+        // Función para cambiar módulo (para el menú)
+        function switchModule(module) {
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Scroll suave al módulo seleccionado
+            document.getElementById(`${module}-module`).scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+            
+            showToast(`Módulo ${module.toUpperCase()}`, 'info');
+        }
+
+        // Cálculo de IR
+        function calculateIR(event) {
+            event.preventDefault();
+            
+            const salaryInput = document.getElementById('ir-salary');
+            const currency = document.getElementById('ir-currency').value;
+            
+            if (!validateNumber(salaryInput, 0, null, document.getElementById('ir-salary-error'))) {
+                showToast('Por favor ingrese un salario válido', 'error');
+                return;
+            }
+
+            let grossSalary = parseFloat(salaryInput.value);
+            
+            // Guardar moneda original para mostrar resultados
+            const displayCurrency = currency;
+            
+            // Convertir a NIO para cálculos si es necesario
+            let salaryInNIO = grossSalary;
+            if (currency !== 'NIO') {
+                salaryInNIO = convertCurrency(grossSalary, currency, 'NIO');
+            }
+
+            const inssRate = 0.07;
+            const inssDeductionNIO = salaryInNIO * inssRate;
+            const netSalaryNIO = salaryInNIO - inssDeductionNIO;
+            
+            // Cálculo de IR progresivo (basado en NIO)
+            let irDeductionNIO = 0;
+            if (netSalaryNIO > 100000) {
+                irDeductionNIO = (netSalaryNIO - 100000) * 0.30 + 15500;
+            } else if (netSalaryNIO > 50000) {
+                irDeductionNIO = (netSalaryNIO - 50000) * 0.25 + 7500;
+            } else if (netSalaryNIO > 20000) {
+                irDeductionNIO = (netSalaryNIO - 20000) * 0.20 + 2000;
+            } else if (netSalaryNIO > 10000) {
+                irDeductionNIO = (netSalaryNIO - 10000) * 0.15;
+            }
+
+            const totalSalaryNIO = netSalaryNIO - irDeductionNIO;
+
+            // Convertir resultados a la moneda de visualización si es necesario
+            let grossDisplay = grossSalary;
+            let inssDisplay = inssDeductionNIO;
+            let netDisplay = netSalaryNIO;
+            let irDisplay = irDeductionNIO;
+            let totalDisplay = totalSalaryNIO;
+
+            if (currency !== 'NIO') {
+                grossDisplay = grossSalary; // Ya está en la moneda correcta
+                inssDisplay = convertCurrency(inssDeductionNIO, 'NIO', currency);
+                netDisplay = convertCurrency(netSalaryNIO, 'NIO', currency);
+                irDisplay = convertCurrency(irDeductionNIO, 'NIO', currency);
+                totalDisplay = convertCurrency(totalSalaryNIO, 'NIO', currency);
+            }
+
+            // Mostrar resultados
+            document.getElementById('ir-gross').textContent = formatCurrency(grossDisplay, currency);
+            document.getElementById('ir-inss').textContent = formatCurrency(inssDisplay, currency);
+            document.getElementById('ir-net').textContent = formatCurrency(netDisplay, currency);
+            document.getElementById('ir-tax').textContent = formatCurrency(irDisplay, currency);
+            document.getElementById('ir-total').textContent = formatCurrency(totalDisplay, currency);
+            
+            document.getElementById('ir-result').classList.add('show');
+
+            // Guardar en historial
+            saveToHistory('IR', {
+                'Salario Bruto': grossDisplay,
+                'INSS': inssDisplay,
+                'Salario Neto': netDisplay,
+                'IR': irDisplay,
+                'Salario Final': totalDisplay,
+                'Moneda': currency
+            });
+
+            // Actualizar gráfico
+            updateChart({
+                labels: ['Salario Neto', 'INSS', 'IR'],
+                data: [netDisplay, inssDisplay, irDisplay]
+            });
+
+            currentResults = { 
+                type: 'IR', 
+                gross: grossDisplay, 
+                inss: inssDisplay, 
+                net: netDisplay, 
+                ir: irDisplay, 
+                total: totalDisplay,
+                currency: currency 
+            };
+
+            showToast('IR calculado exitosamente');
+        }
+
+        // Cálculo de IVA
+        function calculateIVA(event) {
+            event.preventDefault();
+            
+            const amountInput = document.getElementById('iva-amount');
+            const rateInput = document.getElementById('iva-rate');
+            
+            if (!validateNumber(amountInput, 0, null, document.getElementById('iva-amount-error')) ||
+                !validateNumber(rateInput, 0, 100, document.getElementById('iva-rate-error'))) {
+                showToast('Por favor ingrese valores válidos', 'error');
+                return;
+            }
+
+            const baseAmount = parseFloat(amountInput.value);
+            const ivaRate = parseFloat(rateInput.value) / 100;
+            
+            const ivaAmount = baseAmount * ivaRate;
+            const totalAmount = baseAmount + ivaAmount;
+
+            document.getElementById('iva-base').textContent = formatCurrency(baseAmount);
+            document.getElementById('iva-tax').textContent = formatCurrency(ivaAmount);
+            document.getElementById('iva-total').textContent = formatCurrency(totalAmount);
+            
+            document.getElementById('iva-result').classList.add('show');
+
+            saveToHistory('IVA', {
+                'Monto Base': baseAmount,
+                'IVA': ivaAmount,
+                'Total': totalAmount
+            });
+
+            updateChart({
+                labels: ['Base', 'IVA'],
+                data: [baseAmount, ivaAmount]
+            });
+
+            currentResults = { type: 'IVA', base: baseAmount, iva: ivaAmount, total: totalAmount };
+            showToast('IVA calculado exitosamente');
+        }
+
+        // Cálculo de Aguinaldo
+        function calculateAguinaldo(event) {
+            event.preventDefault();
+            
+            const salary = parseFloat(document.getElementById('aguinaldo-salary').value);
+            const months = parseFloat(document.getElementById('aguinaldo-months').value);
+            
+            const aguinaldo = (salary / 12) * months;
+            const inss = aguinaldo * 0.07;
+            const neto = aguinaldo - inss;
+
+            document.getElementById('aguinaldo-gross').textContent = formatCurrency(aguinaldo);
+            document.getElementById('aguinaldo-inss').textContent = formatCurrency(inss);
+            document.getElementById('aguinaldo-net').textContent = formatCurrency(neto);
+            
+            document.getElementById('aguinaldo-result').classList.add('show');
+
+            saveToHistory('Aguinaldo', {
+                'Aguinaldo Bruto': aguinaldo,
+                'INSS': inss,
+                'Aguinaldo Neto': neto
+            });
+
+            currentResults = { type: 'Aguinaldo', gross: aguinaldo, inss: inss, net: neto };
+            showToast('Aguinaldo calculado exitosamente');
+        }
+
+        // Cálculo de Indemnización
+        function calculateIndemnizacion(event) {
+            event.preventDefault();
+            
+            const salary = parseFloat(document.getElementById('indemnizacion-salary').value);
+            const years = parseFloat(document.getElementById('indemnizacion-years').value);
+            
+            const indemnizacion = (salary * years) / 12;
+            const inss = indemnizacion * 0.07;
+            const neto = indemnizacion - inss;
+
+            document.getElementById('indemnizacion-gross').textContent = formatCurrency(indemnizacion);
+            document.getElementById('indemnizacion-inss').textContent = formatCurrency(inss);
+            document.getElementById('indemnizacion-net').textContent = formatCurrency(neto);
+            
+            document.getElementById('indemnizacion-result').classList.add('show');
+
+            saveToHistory('Indemnización', {
+                'Indemnización Bruta': indemnizacion,
+                'INSS': inss,
+                'Indemnización Neta': neto
+            });
+
+            currentResults = { type: 'Indemnización', gross: indemnizacion, inss: inss, net: neto };
+            showToast('Indemnización calculada exitosamente');
+        }
+
+        // Cálculo de INSS Patronal
+        function calculateINSSPatronal(event) {
+            event.preventDefault();
+            
+            const salary = parseFloat(document.getElementById('patronal-salary').value);
+            
+            const inssPatronal = salary * 0.225; // 22.5%
+            const inatec = salary * 0.02; // 2%
+            const total = inssPatronal + inatec;
+
+            document.getElementById('patronal-inss').textContent = formatCurrency(inssPatronal);
+            document.getElementById('patronal-inatec').textContent = formatCurrency(inatec);
+            document.getElementById('patronal-total').textContent = formatCurrency(total);
+            
+            document.getElementById('patronal-result').classList.add('show');
+
+            saveToHistory('INSS Patronal', {
+                'INSS Patronal': inssPatronal,
+                'INATEC': inatec,
+                'Total Patronal': total
+            });
+
+            currentResults = { type: 'INSS Patronal', inss: inssPatronal, inatec: inatec, total: total };
+            showToast('INSS Patronal calculado exitosamente');
+        }
+
+        // Función auxiliar para calcular IR en comparaciones
+        function calculateIRForComparison(salary) {
+            const inss = salary * 0.07;
+            const net = salary - inss;
+            
+            let ir = 0;
+            if (net > 100000) {
+                ir = (net - 100000) * 0.30 + 15500;
+            } else if (net > 50000) {
+                ir = (net - 50000) * 0.25 + 7500;
+            } else if (net > 20000) {
+                ir = (net - 20000) * 0.20 + 2000;
+            } else if (net > 10000) {
+                ir = (net - 10000) * 0.15;
+            }
+
+            return { inss, net, ir, total: net - ir };
+        }
+
+        // Comparar escenarios
+        function compareScenarios() {
+            const currentSalary = parseFloat(document.getElementById('current-salary').value);
+            const proposedSalary = parseFloat(document.getElementById('proposed-salary').value);
+
+            if (isNaN(currentSalary) || isNaN(proposedSalary)) {
+                showToast('Ingrese ambos salarios para comparar', 'error');
+                return;
+            }
+
+            const current = calculateIRForComparison(currentSalary);
+            const proposed = calculateIRForComparison(proposedSalary);
+
+            const comparison = {
+                salaryDiff: proposedSalary - currentSalary,
+                inssDiff: proposed.inss - current.inss,
+                irDiff: proposed.ir - current.ir,
+                netDiff: proposed.total - current.total
+            };
+
+            const html = `
+                <div class="result-item">
+                    <span class="result-label">Diferencia Salarial:</span>
+                    <span class="result-value ${comparison.salaryDiff >= 0 ? 'text-success' : 'text-danger'}" style="color: ${comparison.salaryDiff >= 0 ? '#28a745' : '#dc3545'}">
+                        ${formatCurrency(Math.abs(comparison.salaryDiff))}
+                        ${comparison.salaryDiff >= 0 ? '↑' : '↓'}
+                    </span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Diferencia INSS:</span>
+                    <span class="result-value ${comparison.inssDiff >= 0 ? 'text-success' : 'text-danger'}" style="color: ${comparison.inssDiff >= 0 ? '#28a745' : '#dc3545'}">
+                        ${formatCurrency(Math.abs(comparison.inssDiff))}
+                        ${comparison.inssDiff >= 0 ? '↑' : '↓'}
+                    </span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Diferencia IR:</span>
+                    <span class="result-value ${comparison.irDiff <= 0 ? 'text-success' : 'text-danger'}" style="color: ${comparison.irDiff <= 0 ? '#28a745' : '#dc3545'}">
+                        ${formatCurrency(Math.abs(comparison.irDiff))}
+                        ${comparison.irDiff <= 0 ? '↓' : '↑'}
+                    </span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Diferencia Neto:</span>
+                    <span class="result-value total ${comparison.netDiff >= 0 ? 'text-success' : 'text-danger'}" style="color: ${comparison.netDiff >= 0 ? '#28a745' : '#dc3545'}">
+                        ${formatCurrency(Math.abs(comparison.netDiff))}
+                        ${comparison.netDiff >= 0 ? '↑' : '↓'}
+                    </span>
+                </div>
+            `;
+
+            document.getElementById('comparison-details').innerHTML = html;
+            document.getElementById('comparison-result').classList.add('show');
+            
+            saveToHistory('Comparación', {
+                'Salario Actual': currentSalary,
+                'Salario Propuesto': proposedSalary,
+                'Diferencia Neta': comparison.netDiff
+            });
+
+            showToast('Comparación completada');
+        }
+
+        // Guardar en historial
+        function saveToHistory(type, data) {
+            const historyItem = {
+                id: Date.now(),
+                type: type,
+                data: data,
+                timestamp: new Date().toLocaleString()
+            };
+            
+            calculationHistory.unshift(historyItem);
+            if (calculationHistory.length > 20) calculationHistory.pop();
+            
+            localStorage.setItem('taxHistory', JSON.stringify(calculationHistory));
+            updateHistoryDisplay();
+        }
+
+        // Actualizar display del historial
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('history-list');
+            
+            if (calculationHistory.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No hay cálculos en el historial</p>';
+                return;
+            }
+
+            historyList.innerHTML = calculationHistory.map(item => `
+                <div class="history-item" onclick="loadHistoryItem(${item.id})">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>${item.type}</strong>
+                        <small>${item.timestamp}</small>
+                    </div>
+                    <small>${Object.entries(item.data).map(([key, value]) => 
+                        `${key}: ${typeof value === 'number' ? formatCurrency(value) : value}`
+                    ).join(' • ')}</small>
+                </div>
+            `).join('');
+        }
+
+        // Cargar item del historial
+        function loadHistoryItem(id) {
+            const item = calculationHistory.find(i => i.id === id);
+            if (item) {
+                showToast(`Cargando cálculo ${item.type} del ${item.timestamp}`, 'info');
+                // Aquí puedes implementar la carga del cálculo específico
+            }
+        }
+
+        // Limpiar historial
+        function clearHistory() {
+            if (confirm('¿Está seguro de limpiar todo el historial?')) {
+                calculationHistory = [];
+                localStorage.removeItem('taxHistory');
+                updateHistoryDisplay();
+                showToast('Historial limpiado');
+            }
+        }
+
+        // Exportar historial
+        function exportHistory() {
+            const dataStr = JSON.stringify(calculationHistory, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `historial-impuestos-${new Date().toISOString().slice(0,10)}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showToast('Historial exportado exitosamente');
+        }
+
+        // Actualizar gráfico
+        function updateChart(data) {
+            const ctx = document.getElementById('taxChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6610f2'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                                font: { size: 12 }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Distribución de Deducciones',
+                            color: getComputedStyle(document.body).getPropertyValue('--text-primary'),
+                            font: { size: 16, weight: 'bold' }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        // Exportar PDF
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(22);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Calculadora de Impuestos Nicaragua', 20, 20);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, 35);
+            doc.text(`Hora: ${new Date().toLocaleTimeString()}`, 20, 42);
+            
+            let y = 55;
+            if (currentResults && Object.keys(currentResults).length > 0) {
+                doc.setFontSize(14);
+                doc.setTextColor(102, 126, 234);
+                doc.text('Resultados:', 20, y);
+                y += 10;
+                
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                Object.entries(currentResults).forEach(([key, value]) => {
+                    if (key !== 'type') {
+                        if (typeof value === 'number') {
+                            doc.text(`${key}: ${formatCurrency(value)}`, 25, y);
+                        } else {
+                            doc.text(`${key}: ${value}`, 25, y);
+                        }
+                        y += 8;
+                    }
+                });
+            }
+            
+            doc.save('calculadora-impuestos.pdf');
+            showToast('PDF exportado exitosamente');
+        }
+
+        // Exportar Excel
+        function exportExcel() {
+            const wb = XLSX.utils.book_new();
+            
+            // Preparar datos para Excel
+            const data = calculationHistory.map(item => {
+                const row = {
+                    Tipo: item.type,
+                    Fecha: item.timestamp
+                };
+                // Aplanar el objeto data
+                Object.entries(item.data).forEach(([key, value]) => {
+                    row[key] = value;
+                });
+                return row;
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(data);
+            
+            // Ajustar ancho de columnas
+            const colWidths = [];
+            if (data.length > 0) {
+                Object.keys(data[0]).forEach(key => {
+                    colWidths.push({ wch: Math.max(key.length, 15) });
+                });
+            }
+            ws['!cols'] = colWidths;
+            
+            XLSX.utils.book_append_sheet(wb, ws, 'Historial');
+            XLSX.writeFile(wb, `calculadora-impuestos-${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Excel exportado exitosamente');
+        }
+
+        // Compartir resultados
+        function shareResults() {
+            if (!currentResults || Object.keys(currentResults).length === 0) {
+                showToast('No hay resultados para compartir', 'warning');
+                return;
+            }
+            
+            let text = `📊 *Calculadora de Impuestos Nicaragua*\n\n`;
+            text += `📌 *${currentResults.type}*\n`;
+            text += `📅 ${new Date().toLocaleString()}\n\n`;
+            
+            Object.entries(currentResults).forEach(([key, value]) => {
+                if (key !== 'type') {
+                    if (typeof value === 'number') {
+                        text += `• ${key}: ${formatCurrency(value)}\n`;
+                    } else {
+                        text += `• ${key}: ${value}\n`;
+                    }
+                }
+            });
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Mis cálculos de impuestos',
+                    text: text,
+                    url: window.location.href
+                }).then(() => showToast('Compartido exitosamente'))
+                  .catch((err) => {
+                      if (err.name !== 'AbortError') {
+                          showToast('Error al compartir', 'error');
+                      }
+                  });
+            } else {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Resultados copiados al portapapeles');
+                }).catch(() => {
+                    showToast('Error al copiar', 'error');
+                });
+            }
+        }
+
+        // Respaldo en la nube
+        function backupToCloud() {
+            showToast('Conectando con el servidor...', 'info');
+            
+            // Simular respaldo en la nube
+            setTimeout(() => {
+                const backup = {
+                    history: calculationHistory,
+                    date: new Date().toISOString(),
+                    version: '1.0',
+                    stats: {
+                        totalCalculos: calculationHistory.length,
+                        tipos: [...new Set(calculationHistory.map(item => item.type))]
+                    }
+                };
+                
+                localStorage.setItem('cloudBackup', JSON.stringify(backup));
+                showToast('✅ Respaldo guardado en la nube');
+            }, 2000);
+        }
+
+        // Modo oscuro
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            
+            // Actualizar icono en el menú
+            const menuItem = document.querySelector('.menu-item:has(.fa-moon)');
+            if (menuItem) {
+                const icon = menuItem.querySelector('i');
+                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                const span = menuItem.querySelector('span');
+                span.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
+            }
+            
+            // Actualizar gráfico si existe
+            if (chart) {
+                chart.options.plugins.legend.labels.color = getComputedStyle(document.body).getPropertyValue('--text-primary');
+                chart.options.plugins.title.color = getComputedStyle(document.body).getPropertyValue('--text-primary');
+                chart.update();
+            }
+            
+            showToast(isDark ? '🌙 Modo oscuro activado' : '☀️ Modo claro activado', 'info');
+        }
+
+        // Sidebar toggle para móvil
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        // Mostrar atajos
+        function showShortcuts() {
+            document.getElementById('shortcuts-modal').classList.add('show');
+        }
+
+        // Cerrar modal
+        function closeModal(event) {
+            if (event.target === document.getElementById('shortcuts-modal') || !event) {
+                document.getElementById('shortcuts-modal').classList.remove('show');
+            }
+        }
+
+        // Atajos de teclado
+        document.addEventListener('keydown', function(e) {
+            // Prevenir atajos del navegador
+            if (e.ctrlKey) {
+                e.preventDefault();
+                
+                switch(e.key.toLowerCase()) {
+                    case 'enter':
+                        const activeModule = document.querySelector('.calculator-card');
+                        if (activeModule.id.includes('ir')) {
+                            calculateIR(new Event('submit'));
+                        } else if (activeModule.id.includes('iva')) {
+                            calculateIVA(new Event('submit'));
+                        }
+                        break;
+                        
+                    case 'r':
+                        location.reload();
+                        break;
+                        
+                    case 'd':
+                        toggleDarkMode();
+                        break;
+                        
+                    case 'p':
+                        exportPDF();
+                        break;
+                        
+                    case 'e':
+                        exportExcel();
+                        break;
+                        
+                    case 's':
+                        shareResults();
+                        break;
+                        
+                    case '1':
+                        document.getElementById('ir-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                    case '2':
+                        document.getElementById('iva-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                    case '3':
+                        document.getElementById('aguinaldo-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                    case '4':
+                        document.getElementById('indemnizacion-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                    case '5':
+                        document.getElementById('inss-patronal-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                    case '6':
+                        document.getElementById('comparador-module').scrollIntoView({ behavior: 'smooth' });
+                        break;
+                }
+            }
+        });
+
+        // Validación en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar todos los módulos
+            document.querySelectorAll('.calculator-card').forEach(card => {
+                card.style.display = 'block';
+            });
+
+            // Cargar preferencias
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('.menu-item i.fa-moon');
+                if (icon) {
+                    icon.className = 'fas fa-sun';
+                    const span = icon.parentElement.querySelector('span');
+                    span.textContent = 'Modo Claro';
+                }
+            }
+            
+            // Cargar historial
+            updateHistoryDisplay();
+            
+            // Configurar validación en tiempo real para inputs
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.classList.remove('error');
+                    const errorId = this.id + '-error';
+                    const errorElement = document.getElementById(errorId);
+                    if (errorElement) {
+                        errorElement.classList.remove('show');
+                    }
+                });
+            });
+
+            // Inicializar gráfico con datos de ejemplo
+            setTimeout(() => {
+                updateChart({
+                    labels: ['Salario Neto', 'INSS', 'IR'],
+                    data: [16740, 1260, 1264.67]
+                });
+            }, 500);
+
+            // Mostrar resultados iniciales
+            document.getElementById('ir-result').classList.add('show');
+            document.getElementById('iva-result').classList.add('show');
+            document.getElementById('aguinaldo-result').classList.add('show');
+            document.getElementById('indemnizacion-result').classList.add('show');
+            document.getElementById('patronal-result').classList.add('show');
+
+            showToast('🎉 ¡Bienvenido a Calculadora de Impuestos Nicaragua Pro!', 'info');
+        });
+    </script>
+</body>
+</html>

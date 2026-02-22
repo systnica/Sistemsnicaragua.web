@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>POS Nicaragua | Sistema Fiscal DGI - Master Final</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0055a4 0%, #0066c0 100%);
+            min-height: 100vh;
+            display: flex;
+            color: #1a1a1a;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Secciones principales */
+        .catalog-section {
+            flex: 2;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            margin: 20px;
+            border-radius: 24px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .cart-section {
+            flex: 1;
+            background: white;
+            margin: 20px 20px 20px 0;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            min-width: 380px;
+        }
+
+        /* Cabeceras */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header h2 {
+            font-size: 1.8rem;
+            color: #0055a4;
+            font-weight: 700;
+        }
+
+        /* Buscador y Botones */
+        .search-wrapper { flex: 1; max-width: 400px; }
+        .search-bar {
+            width: 100%;
+            padding: 14px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0055a4 0%, #0066c0 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s;
+        }
+
+        /* Grid de Productos */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 20px;
+            padding: 15px;
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid #eee;
+            transition: 0.3s;
+        }
+
+        .product-card:hover { transform: translateY(-5px); border-color: #0055a4; }
+        .product-icon { font-size: 3rem; margin-bottom: 10px; }
+
+        /* Carrito */
+        .cart-header { background: #2d3748; color: white; padding: 20px; text-align: center; }
+        .cart-items { flex: 1; overflow-y: auto; padding: 15px; background: #f7fafc; }
+        .cart-footer { padding: 20px; border-top: 2px solid #eee; }
+
+        /* Estilos del ESCÁNER */
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        /* Modales */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px; right: 20px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            color: white;
+            transform: translateX(200%);
+            transition: 0.3s;
+            z-index: 2000;
+        }
+        .notification.show { transform: translateX(0); }
+        .success { background: #00a86b; }
+        .error { background: #fc8181; }
+
+        /* Estilos para vista previa de factura */
+        .invoice-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        .invoice-preview table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .invoice-preview th, .invoice-preview td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .invoice-preview th {
+            background: #f7fafc;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; height: auto; }
+            .cart-section { min-width: auto; margin: 10px; }
+            .catalog-section { margin: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="notification" class="notification"></div>
+
+    <div class="app-container">
+        <div class="catalog-section">
+            <div class="header">
+                <h2>🇳🇮 POS Nicaragua</h2>
+                <div class="search-wrapper">
+                    <input type="text" id="search" class="search-bar" placeholder="Buscar..." onkeyup="filterProducts()">
+                </div>
+                <button class="btn-primary" onclick="startScanner()">
+                    <span>📷</span> Escanear
+                </button>
+                <button class="btn-primary" onclick="openProductModal()">
+                    <span>➕</span> Nuevo
+                </button>
+                <button class="btn-primary" onclick="openConfigModal()">
+                    <span>⚙️</span> Config
+                </button>
+            </div>
+            <div class="products-grid" id="products-container"></div>
+        </div>
+
+        <div class="cart-section">
+            <div class="cart-header">
+                <h3>Factura Pro-forma</h3>
+                <p id="date-display"></p>
+                <p id="ticket-number">Factura: 001-001-00000001</p>
+            </div>
+            <div class="cart-items" id="cart-items"></div>
+            <div class="cart-footer">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.4rem; color: #0055a4;">
+                    <span>TOTAL:</span>
+                    <span id="total-amount">C$0.00</span>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-primary" style="flex: 1; background: #00a86b;" onclick="processCheckout()">
+                        COBRAR
+                    </button>
+                    <button class="btn-primary" style="flex: 1;" onclick="previewInvoice()">
+                        👁️ Vista Previa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Escáner -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:15px">📷 Escaner de Cámara</h3>
+            <div id="reader"></div>
+            <button class="btn-primary" style="width:100%; margin-top:15px; background:#2d3748" onclick="stopScanner()">Cerrar Cámara</button>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Producto -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:15px">➕ Nuevo Producto</h3>
+            <input type="text" id="product-name" placeholder="Nombre" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="number" id="product-price" placeholder="Precio" step="0.01" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="text" id="product-barcode" placeholder="Código de barras" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="text" id="product-icon" placeholder="Icono (ej. 🥤)" value="📦" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-primary" style="flex:1; background:#2d3748" onclick="closeProductModal()">Cancelar</button>
+                <button class="btn-primary" style="flex:1;" onclick="saveProduct()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuración -->
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:15px">⚙️ Configuración</h3>
+            <input type="text" id="store-name" placeholder="Nombre del negocio" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="text" id="store-address" placeholder="Dirección" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="text" id="store-rut" placeholder="RUT" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <input type="text" id="cashier-name" placeholder="Nombre del cajero" style="width:100%; padding:10px; margin:10px 0; border:2px solid #e0e0e0; border-radius:12px;">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-primary" style="flex:1; background:#2d3748" onclick="closeConfigModal()">Cancelar</button>
+                <button class="btn-primary" style="flex:1;" onclick="saveConfig()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Vista Previa Factura -->
+    <div id="invoice-modal" class="modal">
+        <div class="modal-content" style="max-width:600px;">
+            <h3 style="margin-bottom:15px">🧾 Vista Previa de Factura</h3>
+            <div id="invoice-preview-content" class="invoice-preview"></div>
+            <div style="display: flex; gap: 10px; margin-top:15px;">
+                <button class="btn-primary" style="flex:1;" onclick="printInvoice()">🖨️ Imprimir</button>
+                <button class="btn-primary" style="flex:1;" onclick="downloadInvoicePDF()">📥 PDF</button>
+                <button class="btn-primary" style="flex:1; background:#2d3748" onclick="closeInvoiceModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CÓDIGO ORIGINAL COMPLETAMENTE RESTAURADO
+        // SOLO SE AÑADIERON LAS FUNCIONES NUEVAS AL FINAL
+        // ============================================
+
+        // Datos Maestros
+        let products = [
+            { id: 1, name: "Refresco Cola", price: 20.00, icon: "🥤", barcode: "750100000001" },
+            { id: 2, name: "Agua Mineral", price: 15.00, icon: "💧", barcode: "750100000002" },
+            { id: 3, name: "Papas Fritas", price: 35.00, icon: "🍟", barcode: "750100000003" }
+        ];
+        let cart = [];
+        let html5QrCode = null;
+        let invoiceCounter = 1;
+
+        // Configuración del negocio
+        let storeConfig = {
+            name: "Mi Mini Super",
+            address: "Dirección por defecto",
+            rut: "12345678-9",
+            cashier: "Cajero"
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts(products);
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            loadConfig();
+        });
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('date-display').innerText = now.toLocaleString('es-NI');
+        }
+
+        function renderProducts(list) {
+            const container = document.getElementById('products-container');
+            container.innerHTML = '';
+            list.forEach(p => {
+                container.innerHTML += `
+                    <div class="product-card" onclick="addToCart(${p.id})">
+                        <div class="product-icon">${p.icon}</div>
+                        <div style="font-weight:bold">${p.name}</div>
+                        <div style="color:#0055a4">C$${p.price.toFixed(2)}</div>
+                        <div style="font-size:0.7rem; color:#aaa">${p.barcode}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterProducts() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const filtered = products.filter(p => p.name.toLowerCase().includes(query) || p.barcode.includes(query));
+            renderProducts(filtered);
+        }
+
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            const item = cart.find(i => i.id === id);
+            if (item) { item.quantity++; } 
+            else { cart.push({...product, quantity: 1}); }
+            renderCart();
+            showNotification(`${product.name} agregado`, 'success');
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = '';
+            let total = 0;
+            cart.forEach(item => {
+                total += item.price * item.quantity;
+                container.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; background:white; padding:10px; border-radius:10px; margin-bottom:10px; border-left:4px solid #0055a4">
+                        <div><b>${item.name}</b><br><small>C$${item.price} x ${item.quantity}</small></div>
+                        <div><b>C$${(item.price * item.quantity).toFixed(2)}</b></div>
+                    </div>
+                `;
+            });
+            document.getElementById('total-amount').innerText = `C$${total.toFixed(2)}`;
+        }
+
+        function showNotification(msg, type) {
+            const n = document.getElementById('notification');
+            n.innerText = msg;
+            n.className = `notification show ${type}`;
+            setTimeout(() => n.classList.remove('show'), 2000);
+        }
+
+        // ============================================
+        // ESCÁNER CORREGIDO (SIN PERDER EL ORIGINAL)
+        // ============================================
+        async function startScanner() {
+            document.getElementById('scanner-modal').style.display = 'flex';
+            
+            // Detener si ya existe
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {}
+            }
+
+            // Crear nueva instancia
+            html5QrCode = new Html5Qrcode("reader");
+
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 150 },
+                aspectRatio: 1.0 
+            };
+
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (decodedText) => {
+                        const p = products.find(prod => prod.barcode === decodedText);
+                        if(p) {
+                            addToCart(p.id);
+                            showNotification(`${p.name} agregado`, 'success');
+                            if (navigator.vibrate) navigator.vibrate(200);
+                        } else {
+                            showNotification("Código no encontrado: " + decodedText, "error");
+                        }
+                    }
+                );
+            } catch (err) {
+                console.error(err);
+                showNotification("Error: Acceso a cámara denegado", "error");
+                stopScanner();
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                } catch (e) {}
+            }
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+
+        // ============================================
+        // CONFIGURACIÓN (NUEVO - AÑADIDO SIN ROMPER)
+        // ============================================
+        function loadConfig() {
+            const saved = localStorage.getItem('storeConfig');
+            if (saved) {
+                storeConfig = JSON.parse(saved);
+                document.getElementById('ticket-number').innerText = `Factura: 001-001-${String(invoiceCounter).padStart(8, '0')}`;
+            }
+        }
+
+        function saveConfig() {
+            storeConfig.name = document.getElementById('store-name').value.trim() || storeConfig.name;
+            storeConfig.address = document.getElementById('store-address').value.trim() || storeConfig.address;
+            storeConfig.rut = document.getElementById('store-rut').value.trim() || storeConfig.rut;
+            storeConfig.cashier = document.getElementById('cashier-name').value.trim() || storeConfig.cashier;
+            localStorage.setItem('storeConfig', JSON.stringify(storeConfig));
+            closeConfigModal();
+            showNotification('Configuración guardada', 'success');
+        }
+
+        function openConfigModal() {
+            document.getElementById('config-modal').style.display = 'flex';
+            document.getElementById('store-name').value = storeConfig.name;
+            document.getElementById('store-address').value = storeConfig.address;
+            document.getElementById('store-rut').value = storeConfig.rut;
+            document.getElementById('cashier-name').value = storeConfig.cashier;
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').style.display = 'none';
+        }
+
+        // ============================================
+        // NUEVO PRODUCTO (ORIGINAL + MEJORA)
+        // ============================================
+        function openProductModal() {
+            document.getElementById('product-modal').style.display = 'flex';
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').style.display = 'none';
+        }
+
+        function saveProduct() {
+            const name = document.getElementById('product-name').value.trim();
+            const price = parseFloat(document.getElementById('product-price').value);
+            const barcode = document.getElementById('product-barcode').value.trim();
+            const icon = document.getElementById('product-icon').value.trim() || '📦';
+
+            if (!name || isNaN(price) || price <= 0) {
+                showNotification('Nombre y precio válido son obligatorios', 'error');
+                return;
+            }
+
+            const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+            products.push({ id: newId, name, price, icon, barcode: barcode || `manual-${newId}` });
+            renderProducts(products);
+            closeProductModal();
+            showNotification('Producto agregado', 'success');
+        }
+
+        // ============================================
+        // FACTURACIÓN ORIGINAL + NUEVAS FUNCIONES
+        // ============================================
+        function processCheckout() {
+            if(cart.length === 0) return;
+            previewInvoice(); // Mostrar vista previa
+            cart = [];
+            invoiceCounter++;
+            document.getElementById('ticket-number').innerText = `Factura: 001-001-${String(invoiceCounter).padStart(8, '0')}`;
+            renderCart();
+        }
+
+        // ============================================
+        // NUEVAS FUNCIONES: VISTA PREVIA, IMPRIMIR, PDF
+        // ============================================
+        let currentInvoiceData = null;
+
+        function previewInvoice() {
+            if (cart.length === 0) {
+                showNotification('No hay productos en el carrito', 'error');
+                return;
+            }
+
+            const now = new Date();
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            currentInvoiceData = {
+                store: {...storeConfig},
+                cart: [...cart],
+                total: total,
+                date: now.toLocaleString('es-NI'),
+                invoiceNumber: `001-001-${String(invoiceCounter).padStart(8, '0')}`,
+                cashier: storeConfig.cashier
+            };
+
+            let itemsHtml = '';
+            cart.forEach(item => {
+                itemsHtml += `<tr>
+                    <td>${item.icon} ${item.name}</td>
+                    <td>C$${item.price.toFixed(2)}</td>
+                    <td>${item.quantity}</td>
+                    <td>C$${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>`;
+            });
+
+            const previewHtml = `
+                <div style="text-align:center; margin-bottom:15px;">
+                    <h3>${storeConfig.name}</h3>
+                    <p>${storeConfig.address}</p>
+                    <p>RUT: ${storeConfig.rut}</p>
+                </div>
+                <h4>Factura: ${currentInvoiceData.invoiceNumber}</h4>
+                <p>Fecha: ${now.toLocaleString('es-NI')}</p>
+                <p>Cajero: ${storeConfig.cashier}</p>
+                <table>
+                    <thead>
+                        <tr><th>Producto</th><th>Precio</th><th>Cant</th><th>Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+                <div style="text-align:right; margin-top:15px; font-size:1.2rem; font-weight:bold;">
+                    TOTAL: C$${total.toFixed(2)}
+                </div>
+            `;
+
+            document.getElementById('invoice-preview-content').innerHTML = previewHtml;
+            document.getElementById('invoice-modal').style.display = 'flex';
+        }
+
+        function closeInvoiceModal() {
+            document.getElementById('invoice-modal').style.display = 'none';
+        }
+
+        function printInvoice() {
+            if (!currentInvoiceData) return;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head><title>Factura ${currentInvoiceData.invoiceNumber}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                    th { background: #f2f2f2; }
+                    .total { text-align: right; font-size: 1.2rem; font-weight: bold; }
+                </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>${currentInvoiceData.store.name}</h2>
+                        <p>${currentInvoiceData.store.address}</p>
+                        <p>RUT: ${currentInvoiceData.store.rut}</p>
+                        <h3>Factura: ${currentInvoiceData.invoiceNumber}</h3>
+                        <p>Fecha: ${currentInvoiceData.date}</p>
+                        <p>Cajero: ${currentInvoiceData.cashier}</p>
+                    </div>
+                    <table>
+                        <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+                        <tbody>
+                            ${currentInvoiceData.cart.map(item => `
+                                <tr><td>${item.icon} ${item.name}</td>
+                                <td>C$${item.price.toFixed(2)}</td>
+                                <td>${item.quantity}</td>
+                                <td>C$${(item.price * item.quantity).toFixed(2)}</td></tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="total">TOTAL: C$${currentInvoiceData.total.toFixed(2)}</div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function downloadInvoicePDF() {
+            if (!currentInvoiceData) return;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let y = 20;
+            doc.setFontSize(18);
+            doc.text(currentInvoiceData.store.name, 105, y, { align: 'center' });
+            y += 10;
+            doc.setFontSize(10);
+            doc.text(currentInvoiceData.store.address, 105, y, { align: 'center' });
+            y += 7;
+            doc.text(`RUT: ${currentInvoiceData.store.rut}`, 105, y, { align: 'center' });
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`Factura: ${currentInvoiceData.invoiceNumber}`, 20, y);
+            y += 7;
+            doc.text(`Fecha: ${currentInvoiceData.date}`, 20, y);
+            y += 7;
+            doc.text(`Cajero: ${currentInvoiceData.cashier}`, 20, y);
+            y += 10;
+            
+            doc.setFontSize(10);
+            doc.text('Producto', 20, y);
+            doc.text('Precio', 80, y);
+            doc.text('Cant', 120, y);
+            doc.text('Subtotal', 150, y);
+            y += 5;
+            doc.line(20, y, 190, y);
+            y += 5;
+            
+            currentInvoiceData.cart.forEach(item => {
+                doc.text(`${item.icon} ${item.name.substring(0,15)}`, 20, y);
+                doc.text(`C$${item.price.toFixed(2)}`, 80, y);
+                doc.text(item.quantity.toString(), 120, y);
+                doc.text(`C$${(item.price * item.quantity).toFixed(2)}`, 150, y);
+                y += 7;
+            });
+            
+            y += 5;
+            doc.line(20, y, 190, y);
+            y += 10;
+            doc.setFontSize(12);
+            doc.text(`TOTAL: C$${currentInvoiceData.total.toFixed(2)}`, 150, y);
+            
+            doc.save(`Factura_${currentInvoiceData.invoiceNumber}.pdf`);
+        }
+    </script>
+</body>
+</html>
